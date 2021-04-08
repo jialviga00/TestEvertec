@@ -1,0 +1,84 @@
+{% extends "base/__base.html" %}
+{% load i18n %}
+
+{% block content %}
+    <script type="text/javascript">
+        app.controller('IndexCtrl', function ($scope, $http) {
+            
+            $scope.records = [];
+            $scope.cargando = false;
+            $scope.SUCCESS = 'SUCCESS';
+
+            $scope.getData = function (init) {
+                $.ajax({
+                    type: 'post',
+                    data: { csrfmiddlewaretoken: '{{ csrf_token }}' },
+                    url: '/entrypoint/getOrders/',
+                    dataType: 'json',
+                    success: function (data) {
+                        if (data.status === $scope.SUCCESS) {
+                            $scope.records = data.records;
+                            $scope.$apply();
+                        }
+                    }
+                });
+            };
+
+            $scope.updateData = function (init) {
+                try {
+                    $scope.getData(init);
+                    setTimeout(function () { $scope.updateData(false); }, 3000);
+                } catch (error) {
+                    setTimeout(function () { $scope.updateData(false); }, 6000);
+                    console.log("[updateData][error]: ", error);
+                }
+            };
+
+            angular.element(document).ready(function () {
+                $scope.updateData(true);
+            });
+
+        });
+    </script>
+
+    <div ng-controller="IndexCtrl" class="container" ng-cloak>
+        <div class="row">
+            <div class="col-10">
+                <h3>Orders</h3>
+            </div>
+            <div class="col-2">
+                <a href="/create/" class="btn btn-primary">
+                    New Order&nbsp;
+                    <span class="fa fa-shopping-cart" aria-hidden="true"></span>
+                </a>
+            </div>
+        </div>
+        <br/>
+        <table class="table table-hover">
+            <tr>
+                <th>Customer name</th>
+                <th>Customer email</th>
+                <th>Customer mobile</th>
+                <th>Created at</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+            <tr ng-repeat="(index, record) in records">
+                <td>{$ record.customer_name $}</td>
+                <td>{$ record.customer_email $}</td>
+                <td>{$ record.customer_mobile $}</td>
+                <td>{$ record.created_at $}</td>
+                <td class="text-left">USD <i>{$ record.total|number:2 $}</i></td>
+                <td><strong>{$ record.status $}</strong></td>
+                <td class="text-left">
+                    <a href="/detail/{$ record.id $}/">
+                        <span class="fa fa-eye" aria-hidden="true"></span>
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+
+{% endblock %}

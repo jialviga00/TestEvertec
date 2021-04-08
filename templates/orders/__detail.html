@@ -1,0 +1,145 @@
+{% extends "base/__base.html" %}
+{% load i18n %}
+
+{% block content %}
+<script type="text/javascript">
+    app.controller('DetailCtrl', function ($scope, $http, $window) {
+        
+        $scope.FAILED= "FAILED";
+        $scope.SUCCESS = "SUCCESS";
+        $scope.orderId = "{{ order.id }}";
+        $scope.placeToPay = {
+            'status_placetopay': '{{ order.status }}',
+            'message_placetopay': '{{ order.placetopay_message|default_if_none:"" }}',
+        };
+
+        $scope.payOrder = function () {
+            $.ajax({
+                type: 'post',
+                data: { orderId: $scope.orderId, csrfmiddlewaretoken: '{{ csrf_token }}' },
+                url: '/entrypoint/payOrder/',
+                dataType: 'json',
+                success: function (data) {
+                    if (data.status === $scope.SUCCESS) {
+                        $window.location.href = data.processUrl;
+                    } else if (data.status === $scope.FAILED) {
+                        alert(data.message);
+                    }
+                }
+            });
+        };
+
+        $scope.getOrderInformation = function () {
+            $.ajax({
+                type: 'post',
+                data: { orderId: $scope.orderId, csrfmiddlewaretoken: '{{ csrf_token }}' },
+                url: '/entrypoint/getOrderInformation/',
+                dataType: 'json',
+                success: function (data) {
+                    if (data.status === $scope.SUCCESS) {
+                        $scope.placeToPay.status_placetopay = data.status_placetopay;
+                        $scope.placeToPay.message_placetopay = data.message_placetopay;
+                        $scope.$apply();
+                    };
+                }
+            });
+        };
+
+        $scope.updateData = function () {
+            try {
+                if ( ['PENDING', 'PROCESSING'].indexOf($scope.placeToPay.status_placetopay) > -1 ) {
+                    $scope.getOrderInformation();
+                    setTimeout(function () { $scope.updateData(); }, 4000);
+                }
+            } catch (error) {
+                setTimeout(function () { $scope.updateData(); }, 7000);
+                console.log("[updateData][error]: ", error);
+            }
+        };
+
+        angular.element(document).ready(function () {
+            $scope.updateData();
+        });
+    });
+</script>
+
+<div ng-controller="DetailCtrl" class="container" ng-cloak>
+    <div class="row">
+        <div class="col-8 right">
+            <h3>Detail Order</h3>
+        </div>
+        <div class="col-4 float-right">
+            <a href="/" class="btn btn-primary float-right" >
+                List Of Orders&nbsp;
+                <span class="fa fa-shopping-cart" aria-hidden="true"></span>
+            </a>
+            <a href="/create/" class="btn btn-link float-right" style="margin-right: 8px;">
+                New Order&nbsp;
+            </a>
+        </div>
+    </div>
+    <br />
+    <form>
+        <div class="alert alert-success" role="alert" ng-show="placeToPay.status_placetopay == 'APPROVED'">
+            Su orden se encuentra Pagada.
+            <span class="fa fa-check" style="float: right;" aria-hidden="true"></span>
+        </div>
+        <div class="alert alert-warning" role="alert" ng-show="placeToPay.status_placetopay == 'PENDING'">
+            {$ placeToPay.message_placetopay $}
+            <span class="fa fa-exclamation-triangle" style="float: right;" aria-hidden="true"></span>
+        </div>
+        <div class="alert alert-danger" role="alert" ng-show="placeToPay.status_placetopay == 'REJECTED'">
+            {$ placeToPay.message_placetopay $}, Por favor reintente realizar el pago.
+            <span class="fa fa-exclamation" style="float: right;" aria-hidden="true"></span>
+        </div>
+        <div class="form-group">
+            <label for="customer_name">Customer Name</label>
+            <input type="text" value="{{ order.customer_name }}" class="form-control" disabled>
+        </div>
+        <div class="form-group">
+            <label for="customer_email">Customer Email</label>
+            <input type="text" value="{{ order.customer_email }}" class="form-control" disabled>
+        </div>
+        <div class="form-group">
+            <label for="customer_mobile">Customer Mobile</label>
+            <input type="text" value="{{ order.customer_mobile }}" class="form-control" disabled>
+        </div>
+        <div class="form-group">
+            <label for="amount">Amount <i>( unit value: {{ order.unit_value }} )</i></label>
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <span class="input-group-text" id="inputGroupPrepend2">
+                        <strong>UND</strong>
+                    </span>
+                </div>
+                <input type="text" value="{{ order.amount }}" class="form-control" disabled>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="total">Total</label>
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <span class="input-group-text" id="inputGroupPrepend2">
+                        <strong>USD</strong>
+                    </span>
+                </div>
+                <input type="text" class="form-control" value="{{ order.total }}" disabled>
+            </div>
+        </div>
+        <!-- <div class="form-group">
+            <label for="customer_mobile">Status</label>
+            <input type="text" value="{$ placeToPay.status_placetopay $}" class="form-control" disabled>
+        </div>
+        <div class="form-group">
+            <label for="customer_mobile">Message</label>
+            <input type="text" value="{$ placeToPay.message_placetopay $}" class="form-control" disabled>
+        </div> -->
+        <a class="btn btn-primary" href="#" ng-click="payOrder();" ng-show="placeToPay.status_placetopay != 'APPROVED'">
+            Pay
+            <span class="fa fa-save" aria-hidden="true"></span>
+        </a>
+    </form>
+</div>
+
+
+{% endblock %}

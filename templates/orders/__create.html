@@ -1,0 +1,81 @@
+{% extends "base/__base.html" %}
+{% load i18n %}
+
+{% block content %}
+<script type="text/javascript">
+    app.controller('CreateCtrl', function ($scope, $http) {
+        $scope.total = 0;
+        $scope.amount = 1;
+        $scope.unit_value = 4500;
+        
+        $scope.calculate = function() {
+            $scope.total = $scope.amount * $scope.unit_value;
+            $scope.$apply();
+        };
+
+        angular.element(document).ready(function () {
+            $scope.calculate();
+        });
+    });
+</script>
+
+<div ng-controller="CreateCtrl" class="container" ng-cloak>
+    <div class="row">
+        <div class="col-10">
+            <h3>Create Order</h3>
+        </div>
+        <div class="col-2">
+            <a href="/" class="btn btn-primary">
+                List Of Orders&nbsp;
+                <span class="fa fa-shopping-cart" aria-hidden="true"></span>
+            </a>
+        </div>
+    </div>
+    <br />
+    <form action="{% url 'save' %}" method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="customer_name">Customer Name</label>
+            <input type="text" class="form-control" name="customer_name" id="customer_name" placeholder="Enter name" required>
+        </div>
+        <div class="form-group">
+            <label for="customer_email">Customer Email</label>
+            <input type="email" class="form-control" name="customer_email" id="customer_email" placeholder="Enter email" required>
+        </div>
+        <div class="form-group">
+            <label for="customer_mobile">Customer Mobile</label>
+            <input type="text" class="form-control" name="customer_mobile" id="customer_mobile" placeholder="Enter mobile" required>
+        </div>
+        <div class="form-group">
+            <label for="amount">Amount <i>( unit value: {$ unit_value|currency:'':2 $})</i></label>
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <span class="input-group-text" id="inputGroupPrepend2">
+                        <strong>UND</strong>
+                    </span>
+                </div>
+                <input type="number" class="form-control" ng-model="amount" ng-change="calculate();" name="amount" id="amount" placeholder="Enter Amount" aria-describedby="inputGroupPrepend2" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="total">Total</label>
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <span class="input-group-text" id="inputGroupPrepend2">
+                        <strong>USD</strong>
+                    </span>
+                </div>
+                <input type="text" class="form-control" ng-value="total|currency :'':2" id="total" aria-describedby="inputGroupPrepend2" disabled/>
+                <input type="hidden" name="total" value="{$ total $}" />
+                <input type="hidden" name="unit_value" value="{$ unit_value $}" />
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            Save
+            <span class="fa fa-save" aria-hidden="true"></span>
+        </button>
+    </form>
+</div>
+
+
+{% endblock %}
