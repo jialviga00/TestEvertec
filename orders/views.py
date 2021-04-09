@@ -4,10 +4,13 @@ from orders.models import Order
 from django.urls import reverse
 
 def index(request):
+    orders_list = Order.objects.order_by('created_at')
     return render(
         request, 
         'orders/__index.html', 
-        {}
+        {
+            'orders_list': orders_list,
+        }
     )
 
 def create(request):

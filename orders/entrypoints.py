@@ -5,8 +5,10 @@ from json import dumps
 
 
 def getOrders(request):
+
     orders = Order.objects.all()
     response = {'records': [], 'status': 'SUCCESS'}
+
     for order in orders:
         response['records'].append({
             'id': order.id,
@@ -25,68 +27,86 @@ def getOrders(request):
 
 
 def getOrderInformation(request):
-    from lib.placetopay import getRequestInformation
-    order = Order.objects.get(id=request.POST.get('orderId', None))
-    request_information = getRequestInformation(order)
-    STATUS_PLACETOPAY = request_information.get('status', {}).get('status', '__UNDEFINED_STATUS__')
-    MESSAGE_PLACETOPAY = request_information.get('status', {}).get('message', '__UNDEFINED_MESSAGE__')
-    order.status = STATUS_PLACETOPAY
-    order.placetopay_message = MESSAGE_PLACETOPAY
-    order.save()
-    response = { 
-        'status': 'SUCCESS',
-        'status_placetopay': STATUS_PLACETOPAY,
-        'message_placetopay': MESSAGE_PLACETOPAY,
-    }
-    return HttpResponse(dumps(response, cls=DjangoJSONEncoder), content_type='application/json')
+
+    from lib.PlaceToPayTmp import PlaceToPay
+    
+    try:
+        order_id = request.POST.get('orderId')
+        order = Order.objects.get(id=order_id)
+        placeToPay = PlaceToPay()
+
+        response_placetopay = placeToPay.getRequestInformation(order.placetopay_request_id)
+        STATUS_PLACETOPAY = placeToPay.getResponseStatus()
+        MESSAGE_PLACETOPAY = placeToPay.getResponseMessage()
+        order.status = STATUS_PLACETOPAY
+        order.placetopay_message = MESSAGE_PLACETOPAY
+        order.save()
+
+        response = { 
+            'status': placeToPay._SUCCESS_EVERTEC,
+            'status_placetopay': STATUS_PLACETOPAY,
+            'message_placetopay': MESSAGE_PLACETOPAY,
+        }
+        return HttpResponse(dumps(response, cls=DjangoJSONEncoder), content_type='application/json')
+    
+    except Exception as e:
+        response = {  'status': PlaceToPay._FAILED_EVERTEC, 'message': str(e) }
+        return HttpResponse(dumps(response, cls=DjangoJSONEncoder), content_type='application/json')
 
 def payOrder(request):
     
-    from lib.placetopay import sendToPlaceTopay
-    from time import time
+    from lib.PlaceToPayTmp import PlaceToPay
 
-    order = Order.objects.get(id=request.POST.get('orderId', None))
-    FAILED_EVERTEC = "FAILED"
-    SUCCESS_EVERTEC = "SUCCESS"
-    SUCCESS_PLACETOPAY = "OK"
-    FAILED_PLACETOPAY = "FAILED"
+    try:
+        from lib.PlaceToPayUtilities import formartOrderDataForRequest
+        from time import time
 
-    if order.placetopay_process_url is not None and order.status not in ['CREATED', 'REJECTED']:
-        response = {
-            'exists': True,
-            'message': 'PROCESSING',
-            'status': SUCCESS_EVERTEC,
-            'requestId': order.placetopay_request_id,
-            'processUrl': order.placetopay_process_url,
-        }
+        order_id = request.POST.get('orderId')
+        order = Order.objects.get(id=order_id)
+        
+        if order.placetopay_process_url is not None and order.status not in ['CREATED', 'REJECTED']:
+
+            response = {
+                'exists': True,
+                'message': PlaceToPay._PROCESSING,
+                'status': PlaceToPay._SUCCESS_EVERTEC,
+                'requestId': order.placetopay_request_id,
+                'processUrl': order.placetopay_process_url,
+            }
+            return HttpResponse(dumps(response, cls=DjangoJSONEncoder), content_type='application/json')
+        
+        placeToPay = PlaceToPay()
+        reference = str(int(time()))
+        data = formartOrderDataForRequest(order, reference)
+        response_placetopay = placeToPay.sendToPlaceTopay(data)
+        
+        STATUS_PLACETOPAY = placeToPay.getResponseStatus()
+        MESSAGE_PLACETOPAY = placeToPay.getResponseMessage()
+
+        if STATUS_PLACETOPAY == PlaceToPay._FAILED_PLACETOPAY:
+            response = {
+                'status': PlaceToPay._FAILED_EVERTEC,
+                'message': "Se ha presentado un error, consulte con el administrador del sistema \n" + MESSAGE_PLACETOPAY,
+            }
+        elif STATUS_PLACETOPAY == PlaceToPay._SUCCESS_PLACETOPAY:
+            order.reference = reference
+            order.placetopay_request_id = placeToPay.getResposeRequestId()
+            order.placetopay_process_url = placeToPay.getResposeProcessUrl()
+            order.status = PlaceToPay._PROCESSING
+            order.save()
+            response = {
+                'status': PlaceToPay._SUCCESS_EVERTEC,
+                'message': MESSAGE_PLACETOPAY,
+                'requestId': placeToPay.getResposeRequestId(),
+                'processUrl': placeToPay.getResposeProcessUrl(),
+            }
+        else:
+            response = {
+                'status': placeToPay._FAILED_EVERTEC,
+                'message': "Se ha presentado un error,  con el administrador del sistema, no s epudo obtener una respuesta valida con la pasarela de pagos",
+            }
         return HttpResponse(dumps(response, cls=DjangoJSONEncoder), content_type='application/json')
 
-    reference = str(int(time()))
-    response_send = sendToPlaceTopay(order, reference)
-    print(response_send)
-    STATUS_PLACETOPAY = response_send.get('status', {}).get('status', '__UNDEFINED_STATUS__')
-    MESSAGE_PLACETOPAY = response_send.get('status', {}).get('message', '__UNDEFINED_MESSAGE__')
-    print(STATUS_PLACETOPAY, " :: ", MESSAGE_PLACETOPAY)
-    if STATUS_PLACETOPAY == FAILED_PLACETOPAY:
-        response = {
-            'status': FAILED_EVERTEC,
-            'message': "Se ha presentado un error, consulte con el administrador del sistema \n" + MESSAGE_PLACETOPAY,
-        }
-    elif STATUS_PLACETOPAY == SUCCESS_PLACETOPAY:
-        order.reference = reference
-        order.placetopay_request_id = response_send.get('requestId', '__UNDEFINED_REQUESTID__')
-        order.placetopay_process_url = response_send.get('processUrl', '__UNDEFINED_PROCESSURL__')
-        order.status = 'PROCESSING'
-        order.save()
-        response = {
-            'status': SUCCESS_EVERTEC,
-            'message': MESSAGE_PLACETOPAY,
-            'requestId': response_send.get('requestId', '__UNDEFINED_REQUESTID__'),
-            'processUrl': response_send.get('processUrl', '__UNDEFINED_PROCESSURL__'),
-        }
-    else:
-        response = {
-            'status': FAILED_EVERTEC,
-            'message': "Se ha presentado un error,  con el administrador del sistema, no s epudo obtener una respuesta valida con la pasarela de pagos",
-        }
-    return HttpResponse(dumps(response, cls=DjangoJSONEncoder), content_type='application/json')
+    except Exception as e:
+        response = {  'status': PlaceToPay._FAILED_EVERTEC, 'message': str(e) }
+        return HttpResponse(dumps(response, cls=DjangoJSONEncoder), content_type='application/json')

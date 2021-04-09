@@ -1,33 +1,9 @@
 from datetime import datetime, timedelta
 from django.conf import settings
-import requests
 
-def getRequestInformation(order):
-    PLACE_TO_PAY_CONFIG = settings.PLACE_TO_PAY_CONFIG
-    URL = '{url}{request_id}'.format(url=PLACE_TO_PAY_CONFIG.get('URL'), request_id=order.placetopay_request_id)
-    LOGIN = PLACE_TO_PAY_CONFIG.get('LOGIN')
-    TRANKEY = PLACE_TO_PAY_CONFIG.get('TRANKEY')
-    SEED = getSeed()
-
-    order_data = {
-        'auth' : {
-            'login': LOGIN,
-            'tranKey': digest(getNonce(False)+str(SEED)+TRANKEY),
-            'nonce': getNonce(True),
-            'seed': SEED,
-        }
-    }
-    respose = requests.post(
-        URL, 
-        json=order_data
-    )
-    return respose.json()
-
-
-def sendToPlaceTopay(order, reference):
-    PLACE_TO_PAY_CONFIG = settings.PLACE_TO_PAY_CONFIG
+def formartOrderDataForRequest(order, reference):
     expiration = datetime.now() + timedelta(hours=5)
-    order_data = {
+    data = {
         'locale' : 'es_CO',
         'buyer' : {
             'name' : order.customer_name,
@@ -69,39 +45,4 @@ def sendToPlaceTopay(order, reference):
         'captureAddress' : False,
         'paymentMethod' : None,
     }
-
-    URL = PLACE_TO_PAY_CONFIG.get('URL')
-    LOGIN = PLACE_TO_PAY_CONFIG.get('LOGIN')
-    TRANKEY = PLACE_TO_PAY_CONFIG.get('TRANKEY')
-    SEED = getSeed()
-
-    order_data['auth'] = {
-        'login': LOGIN,
-        'tranKey': digest(getNonce(False)+str(SEED)+TRANKEY),
-        'nonce': getNonce(True),
-        'seed': SEED,
-    }
-
-    respose = requests.post(
-        URL, 
-        json=order_data
-    )
-    return respose.json()
-
-
-def getNonce(decode=False):
-    from base64 import b64encode
-    tmpNonce = "TURCallXVmlNakJo".encode('utf-8')
-    if decode is False:
-        return tmpNonce.decode('utf-8')
-    return b64encode(tmpNonce).decode('utf-8')
-
-def getSeed():
-    from datetime import datetime
-    return datetime.now().isoformat()
-
-def digest(cadena):
-    from base64 import b64encode
-    import hashlib
-    h = hashlib.new("sha1", cadena.encode('utf-8'))
-    return b64encode(h.digest()).decode('utf-8')
+    return data
