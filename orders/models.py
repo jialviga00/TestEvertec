@@ -15,3 +15,7 @@ class Order(models.Model):
     placetopay_request_id = models.CharField(max_length=10, blank=True, null=True)
     placetopay_process_url = models.CharField(max_length=100, blank=True, null=True)
     placetopay_message = models.CharField(max_length=150, blank=True, null=True)
+
+    def save(self):
+        self.updated_at = timezone.now()
+        super(Order, self).save()

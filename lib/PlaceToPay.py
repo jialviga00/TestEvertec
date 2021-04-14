@@ -4,6 +4,7 @@ from datetime import datetime
 from base64 import b64encode
 import requests
 import hashlib
+import os
 
 class PlaceToPay:
 
@@ -15,6 +16,7 @@ class PlaceToPay:
 	"""
 	
 	_config = {}
+	_nonce = None
 	_encode = 'utf-8'
 	_algorithm = 'sha1'
 	_response = {}
@@ -62,11 +64,15 @@ class PlaceToPay:
 		return self._config
 	
 	def getNonce(self, decode=False):
-		tmpNonce = "TURCallXVmlNakJo".encode(self._encode)
+		if self._nonce is not None:
+			nonce = self._nonce
+		else:
+			nonce = b64encode(os.urandom(40)).decode('utf-8')[0:16]
+			self._nonce = nonce
 		if decode is False:
-			return tmpNonce.decode(self._encode)
-		return b64encode(tmpNonce).decode(self._encode)
-	
+			return nonce
+		return b64encode(bytes(nonce, encoding=self._encode)).decode(self._encode)
+		
 	def getSeed(self):
 		return datetime.now().isoformat()
 

@@ -76,7 +76,7 @@ class OrderModelTests(TestCase):
 		"""
 
 		from lib.PlaceToPayUtilities import formartOrderDataForRequest
-		from lib.PlaceToPayTmp import PlaceToPay
+		from lib.PlaceToPay import PlaceToPay
 		from time import time
 
 		order = create_order_test()
@@ -94,10 +94,9 @@ class OrderModelTests(TestCase):
 		"""
 		
 		from lib.PlaceToPayUtilities import formartOrderDataForRequest
-		from lib.PlaceToPayTmp import PlaceToPay
+		from lib.PlaceToPay import PlaceToPay
 		from time import time
 
-		SUCCESS_PLACETOPAY = "OK"
 		order = create_order_test(2, 4500)
 		reference = str(int(time()))
 		placeToPay = PlaceToPay()

@@ -28,7 +28,7 @@ def getOrders(request):
 
 def getOrderInformation(request):
 
-    from lib.PlaceToPayTmp import PlaceToPay
+    from lib.PlaceToPay import PlaceToPay
     
     try:
         order_id = request.POST.get('orderId')
@@ -55,7 +55,7 @@ def getOrderInformation(request):
 
 def payOrder(request):
     
-    from lib.PlaceToPayTmp import PlaceToPay
+    from lib.PlaceToPay import PlaceToPay
 
     try:
         from lib.PlaceToPayUtilities import formartOrderDataForRequest

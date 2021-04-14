@@ -33,7 +33,6 @@ def detail(request, order_id):
 
 def save(request):
     from orders.models import Order
-    from django.utils import timezone
     import time
 
     order = Order()
@@ -43,7 +42,6 @@ def save(request):
     order.amount = request.POST.get('amount', 0)
     order.total = request.POST.get('total', 0)
     order.unit_value = request.POST.get('unit_value', 0)
-    order.updated_at = timezone.now()
     order.status = 'CREATED'
     order.reference = str(int(time.time()))
     order.save()
